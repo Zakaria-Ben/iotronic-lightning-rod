@@ -219,6 +219,7 @@ class PluginManager(Module.Module):
                 json.dump(plugins_conf, f, indent=4)
 
     async def PluginInject(self, plugin, onboot):
+
         """Plugin injection procedure into the board:
 
          1. get Plugin files
