@@ -16,7 +16,6 @@
 import asyncio
 from iotronic_lightningrod.modules import Module
 from urllib.parse import urlparse
-
 import iotronic_lightningrod.wampmessage as WM
 
 from oslo_log import log as logging
@@ -71,12 +70,12 @@ class NetworkManager(Module.Module):
             i += 1
         Port.insert(0, port_socat)
 
-        LOG.debug("Creation of the VIF iotronic"+str(port_socat))
+        LOG.debug("Creation of the VIF iotronic"+str(r_tcp_port))
 
         #LOG.debug('Creating virtual interface on the board')
 
         try:
-            p2 = subprocess.Popen('socat -d -d TCP-L:' + str(port_socat) + ',bind=localhost,reuseaddr,forever,interval=10 TUN,tun-type=tap,tun-name=iotronic' + str(port_socat) + ',up  '
+            p2 = subprocess.Popen('socat -d -d TCP-L:' + str(port_socat) + ',bind=localhost,reuseaddr,forever,interval=10 TUN,tun-type=tap,tun-name=iotronic' + str(r_tcp_port) + ',up  '
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 #ws://192.168.17.105:8080
@@ -87,7 +86,7 @@ class NetworkManager(Module.Module):
             LOG.debug('Creation of the VIF succeded: iotronic')
 
             global interface
-            interface = 'iotronic'+str(port_socat)
+            interface = 'iotronic'+str(r_tcp_port)
             message = 'creation de WS tun et SOCAT'
             w_msg = WM.WampSuccess(message)
 
@@ -107,12 +106,13 @@ class NetworkManager(Module.Module):
             LOG.debug("Configuration of the VIF "+interface)
 
             time.sleep(2)
-            p3 = subprocess.Popen("ip link set dev " + str(interface) + " address " + str(port_mac)
+            p3 = subprocess.Popen("ip link set dev " + interface + " address " + str(port_mac)
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             time.sleep(4)
 
-            p4 = subprocess.Popen("dhclient " +str(interface), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            #os.system("dhclient " +str(interface))
+            p4 = subprocess.Popen("dhclient " + interface , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             message = 'IP address assigned'
             w_msg = WM.WampSuccess(message)
@@ -123,6 +123,35 @@ class NetworkManager(Module.Module):
 
             LOG.error(str(e))
             message = 'Error while the configuration'
+            w_msg = WM.WampError(message)
+
+        return w_msg.serialize()
+
+    async def Remove_VIF(self, VIF_name):
+
+        LOG.info("Removing a VIF from the board")
+
+        try:
+            LOG.info("Removing VIF")
+            LOG.debug("Removing VIF :" + str(VIF_name))
+            LOG.info(VIF_name[8:])
+
+            p1 = subprocess.Popen(
+                    "kill $(ps aux | grep -e '-r'" +VIF_name[8:]+ " | awk '{print $2}')"
+                    , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            p1 = subprocess.Popen(
+                "kill $(ps aux | grep -e 'dhclient " + VIF_name + "' | awk '{print $2}')"
+                , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            message = 'VIF removed'
+            w_msg = WM.WampSuccess(message)
+
+            LOG.info("VIF removed")
+        except Exception as e:
+
+            LOG.error(str(e))
+            message = 'Error while removing the VIF'
             w_msg = WM.WampError(message)
 
         return w_msg.serialize()
