@@ -105,14 +105,17 @@ class NetworkManager(Module.Module):
         try:
             LOG.debug("Configuration of the VIF "+interface)
 
-            time.sleep(2)
             p3 = subprocess.Popen("ip link set dev " + interface + " address " + str(port_mac)
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-            time.sleep(4)
-
             #os.system("dhclient " +str(interface))
             p4 = subprocess.Popen("dhclient " + interface , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            time.sleep(4)
+
+            p5 = subprocess.Popen("ip link set dev " + interface + " down" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            p5 = subprocess.Popen("ip link set dev " + interface + " up" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             message = 'IP address assigned'
             w_msg = WM.WampSuccess(message)
