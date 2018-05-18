@@ -98,7 +98,7 @@ class NetworkManager(Module.Module):
 
         return w_msg.serialize()
 
-    async def Configure_VIF(self, port_mac):
+    async def Configure_VIF(self, port_mac, ip_add, cidr):
 
         LOG.info("Configuration of the VIF")
 
@@ -108,14 +108,11 @@ class NetworkManager(Module.Module):
             p3 = subprocess.Popen("ip link set dev " + interface + " address " + str(port_mac)
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-            #os.system("dhclient " +str(interface))
-            p4 = subprocess.Popen("dhclient " + interface , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            time.sleep(1)
 
-            time.sleep(4)
+            p5 = subprocess.Popen("ip address add " + str(ip_add)+ "/" +str(cidr)+ " dev " + interface, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-            p5 = subprocess.Popen("ip link set dev " + interface + " down" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-            p5 = subprocess.Popen("ip link set dev " + interface + " up" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            #p5 = subprocess.Popen("ip link set " + interface + " up" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             message = 'IP address assigned'
             w_msg = WM.WampSuccess(message)
