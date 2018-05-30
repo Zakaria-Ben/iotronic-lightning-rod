@@ -72,22 +72,30 @@ class NetworkManager(Module.Module):
 
         LOG.debug("Creation of the VIF iotronic"+str(r_tcp_port))
 
-        #LOG.debug('Creating virtual interface on the board')
-
         try:
-            p2 = subprocess.Popen('socat -d -d TCP-L:' + str(port_socat) + ',bind=localhost,reuseaddr,forever,interval=10 TUN,tun-type=tap,tun-name=iotronic' + str(r_tcp_port) + ',up  '
+
+            p1 = subprocess.Popen(
+                'ip netns add iotronic' + str(r_tcp_port)
+                , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            p1 = subprocess.Popen(
+                'ip netns exec iotronic' + str(r_tcp_port) + ' bash '
+                , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            p1 = subprocess.Popen('socat -d -d TCP-L:' + str(port_socat) + ',bind=localhost,reuseaddr,forever,interval=10 TUN,tun-type=tap,tun-name=iotronic' + str(r_tcp_port) + ',up  '
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-#ws://192.168.17.105:8080
             p1 = subprocess.Popen(
                 'wstun -r' + str(r_tcp_port) + ':localhost:' + str(port_socat) + ' '+str(self.wagent_url)
                 , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            #p1 = subprocess.Popen('exit', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             LOG.debug('Creation of the VIF succeded: iotronic')
 
             global interface
             interface = 'iotronic'+str(r_tcp_port)
-            message = 'creation de WS tun et SOCAT'
+            message = 'WS tun and SOCAT created'
             w_msg = WM.WampSuccess(message)
 
         except:
@@ -98,24 +106,24 @@ class NetworkManager(Module.Module):
 
         return w_msg.serialize()
 
-    async def Configure_VIF(self, port_mac, ip_add, cidr):
+    async def Configure_VIF(self, port, cidr):
 
         LOG.info("Configuration of the VIF")
 
         try:
             LOG.debug("Configuration of the VIF "+interface)
 
-            p3 = subprocess.Popen("ip link set dev " + interface + " address " + str(port_mac)
+            p3 = subprocess.Popen("ip link set dev " + interface + " address " + str(port['MAC_add'])
                                   , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             time.sleep(1)
 
-            p5 = subprocess.Popen("ip address add " + str(ip_add)+ "/" +str(cidr)+ " dev " + interface, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-            #p5 = subprocess.Popen("ip link set " + interface + " up" , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            p5 = subprocess.Popen("ip address add " + str(port['ip'])+ "/" +str(cidr)+ " dev " + interface, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             message = 'IP address assigned'
             w_msg = WM.WampSuccess(message)
+
+            p1 = subprocess.Popen('exit', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             LOG.info("Configuration succeded")
 
@@ -139,10 +147,6 @@ class NetworkManager(Module.Module):
             p1 = subprocess.Popen(
                     "kill $(ps aux | grep -e '-r'" +VIF_name[8:]+ " | awk '{print $2}')"
                     , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-            p1 = subprocess.Popen(
-                "kill $(ps aux | grep -e 'dhclient " + VIF_name + "' | awk '{print $2}')"
-                , shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             message = 'VIF removed'
             w_msg = WM.WampSuccess(message)
